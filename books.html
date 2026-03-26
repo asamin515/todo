@@ -395,6 +395,31 @@
     .age-3-4  { background: rgba(127,201,255,0.2); color: var(--age3); }
     .age-5-6  { background: rgba(127,255,178,0.2); color: var(--age5); }
 
+    /* ─── Star rating ─── */
+    .stars {
+      display: flex;
+      gap: 2px;
+    }
+    .star {
+      background: none;
+      border: none;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0 1px;
+      line-height: 1;
+      transition: transform 0.1s;
+      color: #3a3a52;
+    }
+    .star:hover, .star.lit { color: #fbbf24; }
+    .star:hover { transform: scale(1.2); }
+    .card-rating {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 6px;
+    }
+    .rating-label { font-size: 0.72rem; color: var(--muted); }
+
     /* ─── Custom badge ─── */
     .custom-badge {
       font-size: 0.68rem;
@@ -660,12 +685,26 @@ let searchQuery = '';
 let panelOpen = false;
 
 // ─── Init ──────────────────────────────────────
-function init() {
-  const data = BOOKS_DATA;
-  allBooks = data.groups;
-  state       = JSON.parse(localStorage.getItem('books_state')   || '{}');
-  customBooks = JSON.parse(localStorage.getItem('custom_books')  || '[]');
+async function init() {
+  state       = JSON.parse(localStorage.getItem('books_state')  || '{}');
+  customBooks = JSON.parse(localStorage.getItem('custom_books') || '[]');
 
+  let data = BOOKS_DATA;
+
+  // GitHub Pages 等のサーバー環境では books-full.json を優先して読み込む
+  if (location.protocol !== 'file:') {
+    try {
+      const res = await fetch('data/books-full.json');
+      if (res.ok) {
+        data = await res.json();
+        console.log(`📚 books-full.json を読み込みました（${data.total ?? '?'} 冊）`);
+      }
+    } catch (_) {
+      // フォールバック: インラインデータを使用
+    }
+  }
+
+  allBooks = data.groups;
   renderTabs(data.groups);
   renderGrid();
   updateBadge();
@@ -774,8 +813,17 @@ function renderGrid() {
         <button class="action-btn ${yondaActive}"   data-action="yonda"   data-id="${book.id}">✅ 読了</button>
         ${deleteBtn}
       </div>
+      ${bs.status === 'yonda' ? renderStars(book.id, bs.rating || 0) : ''}
     </div>`;
   }).join('');
+}
+
+function renderStars(id, rating) {
+  const stars = [1,2,3,4,5].map(n =>
+    `<button class="star ${n <= rating ? 'lit' : ''}" data-action="rate" data-id="${id}" data-rating="${n}">★</button>`
+  ).join('');
+  const label = rating ? `${rating}/5` : '評価する';
+  return `<div class="card-rating"><div class="stars">${stars}</div><span class="rating-label">${label}</span></div>`;
 }
 
 function esc(s) {
@@ -903,7 +951,14 @@ function setupEvents() {
     const action = btn.dataset.action;
     const bs = getBookState(id);
 
-    if (action === 'delete') {
+    if (action === 'rate') {
+      bs.rating = parseInt(btn.dataset.rating);
+      state[id] = bs;
+      saveState();
+      renderGrid();
+      if (panelOpen) renderPanel();
+      return;
+    } else if (action === 'delete') {
       customBooks = customBooks.filter(b => b.id !== id);
       delete state[id];
       saveCustomBooks();
