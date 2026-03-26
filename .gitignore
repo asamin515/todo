@@ -1,0 +1,4 @@
+reserve/node_modules/
+reserve/.env
+reserve/reserve-results.json
+reserve-list.json

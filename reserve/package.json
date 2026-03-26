@@ -1,0 +1,14 @@
+{
+  "name": "ehon-reserve",
+  "version": "1.0.0",
+  "description": "さいたま市立図書館 絵本自動予約スクリプト",
+  "main": "reserve.js",
+  "scripts": {
+    "reserve": "node reserve.js",
+    "reserve:headless": "node reserve.js --headless"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "playwright": "^1.44.0"
+  }
+}

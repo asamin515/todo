@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>絵本リスト</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface2: #242433;
+      --border: #2e2e42;
+      --accent: #7c6bff;
+      --accent2: #a78bfa;
+      --text: #e2e2f0;
+      --muted: #6b6b8a;
+      --radius: 12px;
+      --age0: #ff9f7f;
+      --age3: #7fc9ff;
+      --age5: #7fffb2;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── Header ─── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 16px; }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-link {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: all 0.15s;
+    }
+    .nav-link:hover { background: var(--surface2); color: var(--text); }
+
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+
+    .export-btn {
+      background: linear-gradient(135deg, var(--accent), #9b8bff);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .export-btn:hover { opacity: 0.85; }
+
+    .badge {
+      background: #ff5e7a;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: 99px;
+      padding: 2px 7px;
+      min-width: 20px;
+      text-align: center;
+    }
+    .badge:empty, .badge[data-count="0"] { display: none; }
+
+    /* ─── Age Tabs ─── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      padding: 20px 24px 0;
+      overflow-x: auto;
+    }
+
+    .tab {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 500;
+      padding: 10px 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* ─── Toolbar ─── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 12px;
+      gap: 8px;
+      flex: 1;
+      min-width: 200px;
+    }
+    .search-wrap svg { color: var(--muted); flex-shrink: 0; }
+    .search-input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 0.9rem;
+      padding: 10px 0;
+      width: 100%;
+    }
+    .search-input::placeholder { color: var(--muted); }
+
+    .filter-wrap { display: flex; gap: 4px; }
+
+    .status-filter {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .status-filter.active {
+      background: var(--surface2);
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .count-label { font-size: 0.8rem; color: var(--muted); margin-left: auto; }
+
+    /* ─── Grid ─── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      padding: 20px 24px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.15s, transform 0.15s;
+      animation: fadeIn 0.2s ease;
+    }
+    .card:hover { border-color: #3e3e58; transform: translateY(-1px); }
+    .card.status-yomitai { border-color: var(--accent); }
+    .card.status-yomitai-week { border-color: #ff9f7f; background: #1e1a24; }
+    .card.status-yonda { opacity: 0.5; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+
+    .card-title-wrap { flex: 1; }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.4;
+      margin-bottom: 2px;
+    }
+
+    .card-author { font-size: 0.8rem; color: var(--muted); }
+
+    .age-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      flex-shrink: 0;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: #b0b0c8;
+      line-height: 1.6;
+    }
+
+    .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+    .tag {
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: var(--surface2);
+      border-radius: 6px;
+      padding: 2px 8px;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .action-btn {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      padding: 7px 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .action-btn:hover { color: var(--text); border-color: var(--accent); }
+    .action-btn.active-yomitai { background: rgba(124,107,255,0.15); border-color: var(--accent); color: var(--accent2); }
+    .action-btn.active-week   { background: rgba(255,159,127,0.15); border-color: var(--age0); color: var(--age0); }
+    .action-btn.active-yonda  { background: rgba(74,222,128,0.15); border-color: #4ade80; color: #4ade80; }
+
+    /* ─── Weekly Panel ─── */
+    .week-panel {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 320px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 200;
+      transition: all 0.2s ease;
+    }
+
+    .week-panel.hidden { transform: translateY(calc(100% + 32px)); opacity: 0; pointer-events: none; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .panel-title { font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+
+    .panel-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .panel-close:hover { color: var(--text); }
+
+    .panel-list { list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+
+    .panel-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.82rem;
+    }
+
+    .panel-item-title { flex: 1; }
+    .panel-item-author { font-size: 0.72rem; color: var(--muted); }
+
+    .panel-remove {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 2px 4px;
+    }
+    .panel-remove:hover { color: #ff5e7a; }
+
+    .panel-empty { font-size: 0.82rem; color: var(--muted); text-align: center; padding: 16px 0; }
+
+    .panel-footer { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+
+    .panel-export {
+      background: linear-gradient(135deg, #ff9f7f, #ff6b6b);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 10px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      text-align: center;
+    }
+    .panel-export:hover { opacity: 0.85; }
+
+    .panel-hint { font-size: 0.72rem; color: var(--muted); text-align: center; line-height: 1.5; }
+
+    /* ─── FAB ─── */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: linear-gradient(135deg, #ff9f7f, #ff6b6b);
+      border: none;
+      border-radius: 16px;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 12px 18px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(255,107,107,0.4);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 199;
+    }
+    .fab:hover { opacity: 0.9; transform: translateY(-2px); }
+    .fab.hidden { display: none; }
+
+    /* ─── Empty ─── */
+    .empty { text-align: center; color: var(--muted); padding: 64px 0; }
+    .empty svg { margin-bottom: 12px; opacity: 0.3; }
+
+    /* ─── Toast ─── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.85rem;
+      padding: 10px 20px;
+      z-index: 300;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+    .toast.hide { opacity: 0; transform: translateX(-50%) translateY(10px); }
+
+    /* Age badge colors */
+    .age-0-2  { background: rgba(255,159,127,0.2); color: var(--age0); }
+    .age-3-4  { background: rgba(127,201,255,0.2); color: var(--age3); }
+    .age-5-6  { background: rgba(127,255,178,0.2); color: var(--age5); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span class="logo">📚 絵本リスト</span>
+    <a href="index.html" class="nav-link">← TODO</a>
+  </div>
+  <div class="header-actions">
+    <button class="export-btn" id="open-panel-btn">
+      📋 今週の予約リスト
+      <span class="badge" id="week-badge">0</span>
+    </button>
+  </div>
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="text" class="search-input" id="search-input" placeholder="タイトル・著者・タグで検索...">
+  </div>
+  <div class="filter-wrap">
+    <button class="status-filter active" data-filter="all">すべて</button>
+    <button class="status-filter" data-filter="yomitai">❤️ 読みたい</button>
+    <button class="status-filter" data-filter="week">📋 今週</button>
+    <button class="status-filter" data-filter="yonda">✅ 読了</button>
+  </div>
+  <span class="count-label" id="count-label"></span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<!-- Weekly panel -->
+<div class="week-panel hidden" id="week-panel">
+  <div class="panel-header">
+    <div class="panel-title">
+      📋 今週の予約リスト
+      <span class="badge" id="panel-badge">0</span>
+    </div>
+    <button class="panel-close" id="close-panel">✕</button>
+  </div>
+  <ul class="panel-list" id="panel-list"></ul>
+  <div class="panel-footer">
+    <button class="panel-export" id="do-export">⬇ reserve-list.json をダウンロード</button>
+    <p class="panel-hint">ダウンロード後、<code>reserve/</code> フォルダに保存して<br><code>node reserve.js</code> を実行すると自動予約します。</p>
+  </div>
+</div>
+
+<button class="fab hidden" id="fab">
+  📋 <span id="fab-count">0</span> 冊
+</button>
+
+<div class="toast hide" id="toast"></div>
+
+<script>
+let allBooks = [];
+let state = {};  // { [bookId]: { status: 'none'|'yomitai'|'yonda', week: bool } }
+let activeGroup = '0-2';
+let activeFilter = 'all';
+let searchQuery = '';
+let panelOpen = false;
+
+// ─── Init ──────────────────────────────────────
+async function init() {
+  const res = await fetch('data/books.json');
+  const data = await res.json();
+  allBooks = data.groups;
+  state = JSON.parse(localStorage.getItem('books_state') || '{}');
+
+  renderTabs(data.groups);
+  renderGrid();
+  updateBadge();
+  setupEvents();
+}
+
+function saveState() {
+  localStorage.setItem('books_state', JSON.stringify(state));
+}
+
+function getBookState(id) {
+  return state[id] || { status: 'none', week: false };
+}
+
+// ─── Tabs ──────────────────────────────────────
+function renderTabs(groups) {
+  const container = document.getElementById('tabs');
+  container.innerHTML = groups.map(g => `
+    <button class="tab ${g.id === activeGroup ? 'active' : ''}" data-group="${g.id}">
+      ${g.emoji} ${g.label}
+    </button>
+  `).join('');
+}
+
+// ─── Grid ──────────────────────────────────────
+function renderGrid() {
+  const group = allBooks.find(g => g.id === activeGroup);
+  if (!group) return;
+
+  let books = group.books;
+
+  // Filter by search
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    books = books.filter(b =>
+      b.title.toLowerCase().includes(q) ||
+      b.author.toLowerCase().includes(q) ||
+      (b.tags || []).some(t => t.includes(q))
+    );
+  }
+
+  // Filter by status
+  if (activeFilter === 'yomitai') {
+    books = books.filter(b => getBookState(b.id).status === 'yomitai');
+  } else if (activeFilter === 'week') {
+    books = books.filter(b => getBookState(b.id).week === true);
+  } else if (activeFilter === 'yonda') {
+    books = books.filter(b => getBookState(b.id).status === 'yonda');
+  }
+
+  document.getElementById('count-label').textContent = `${books.length} 冊`;
+
+  const grid = document.getElementById('grid');
+
+  if (books.length === 0) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      <p>該当する絵本がありません</p>
+    </div>`;
+    return;
+  }
+
+  const ageBadgeClass = { '0-2': 'age-0-2', '3-4': 'age-3-4', '5-6': 'age-5-6' };
+  const ageBadgeText = { '0-2': '0〜2歳', '3-4': '3〜4歳', '5-6': '5〜6歳' };
+
+  grid.innerHTML = books.map(book => {
+    const bs = getBookState(book.id);
+    let cardClass = 'card';
+    if (bs.week) cardClass += ' status-yomitai-week';
+    else if (bs.status === 'yomitai') cardClass += ' status-yomitai';
+    else if (bs.status === 'yonda') cardClass += ' status-yonda';
+
+    const yomitaiActive = bs.status === 'yomitai' ? 'active-yomitai' : '';
+    const weekActive    = bs.week                  ? 'active-week'    : '';
+    const yondaActive   = bs.status === 'yonda'    ? 'active-yonda'   : '';
+
+    return `
+    <div class="${cardClass}" data-id="${book.id}">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-title">${esc(book.title)}</div>
+          <div class="card-author">${esc(book.author)} / ${esc(book.publisher || '')}</div>
+        </div>
+        <span class="age-badge ${ageBadgeClass[activeGroup]}">${ageBadgeText[activeGroup]}</span>
+      </div>
+      <p class="card-desc">${esc(book.description)}</p>
+      <div class="card-tags">${(book.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+      <div class="card-actions">
+        <button class="action-btn ${yomitaiActive}" data-action="yomitai" data-id="${book.id}">❤️ 読みたい</button>
+        <button class="action-btn ${weekActive}"    data-action="week"    data-id="${book.id}">📋 今週予約</button>
+        <button class="action-btn ${yondaActive}"   data-action="yonda"   data-id="${book.id}">✅ 読了</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Weekly panel ──────────────────────────────
+function getWeekBooks() {
+  const weekIds = Object.entries(state)
+    .filter(([, v]) => v.week)
+    .map(([id]) => id);
+  const result = [];
+  for (const group of allBooks) {
+    for (const book of group.books) {
+      if (weekIds.includes(book.id)) result.push({ ...book, groupId: group.id });
+    }
+  }
+  return result;
+}
+
+function updateBadge() {
+  const count = getWeekBooks().length;
+  document.getElementById('week-badge').textContent = count;
+  document.getElementById('panel-badge').textContent = count;
+  const fab = document.getElementById('fab');
+  const fabCount = document.getElementById('fab-count');
+  fabCount.textContent = count;
+  fab.classList.toggle('hidden', panelOpen || count === 0);
+}
+
+function renderPanel() {
+  const books = getWeekBooks();
+  const list = document.getElementById('panel-list');
+  if (books.length === 0) {
+    list.innerHTML = `<div class="panel-empty">カードの「📋 今週予約」ボタンで<br>追加してください</div>`;
+  } else {
+    list.innerHTML = books.map(b => `
+      <li class="panel-item">
+        <div>
+          <div class="panel-item-title">${esc(b.title)}</div>
+          <div class="panel-item-author">${esc(b.author)}</div>
+        </div>
+        <button class="panel-remove" data-id="${b.id}" title="削除">✕</button>
+      </li>
+    `).join('');
+  }
+  updateBadge();
+}
+
+function openPanel() {
+  panelOpen = true;
+  renderPanel();
+  document.getElementById('week-panel').classList.remove('hidden');
+  document.getElementById('fab').classList.add('hidden');
+}
+
+function closePanel() {
+  panelOpen = false;
+  document.getElementById('week-panel').classList.add('hidden');
+  updateBadge();
+}
+
+// ─── Export ────────────────────────────────────
+function exportJSON() {
+  const books = getWeekBooks();
+  if (books.length === 0) { showToast('予約リストが空です'); return; }
+  const data = books.map(b => ({
+    id: b.id,
+    title: b.title,
+    author: b.author,
+    isbn: b.isbn || null
+  }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'reserve-list.json';
+  a.click();
+  showToast('reserve-list.json をダウンロードしました ✅');
+}
+
+// ─── Toast ─────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hide');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hide'), 2500);
+}
+
+// ─── Events ────────────────────────────────────
+function setupEvents() {
+  // Tabs
+  document.getElementById('tabs').addEventListener('click', e => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    activeGroup = btn.dataset.group;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === btn));
+    renderGrid();
+  });
+
+  // Search
+  document.getElementById('search-input').addEventListener('input', e => {
+    searchQuery = e.target.value;
+    renderGrid();
+  });
+
+  // Status filters
+  document.querySelectorAll('.status-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeFilter = btn.dataset.filter;
+      document.querySelectorAll('.status-filter').forEach(b => b.classList.toggle('active', b === btn));
+      renderGrid();
+    });
+  });
+
+  // Card actions (event delegation)
+  document.getElementById('grid').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    const bs = getBookState(id);
+
+    if (action === 'yomitai') {
+      bs.status = bs.status === 'yomitai' ? 'none' : 'yomitai';
+    } else if (action === 'yonda') {
+      bs.status = bs.status === 'yonda' ? 'none' : 'yonda';
+      if (bs.status === 'yonda') bs.week = false;
+    } else if (action === 'week') {
+      bs.week = !bs.week;
+      if (bs.week) showToast('今週の予約リストに追加しました 📋');
+    }
+
+    state[id] = bs;
+    saveState();
+    renderGrid();
+    if (panelOpen) renderPanel();
+    updateBadge();
+  });
+
+  // Panel
+  document.getElementById('open-panel-btn').addEventListener('click', openPanel);
+  document.getElementById('fab').addEventListener('click', openPanel);
+  document.getElementById('close-panel').addEventListener('click', closePanel);
+
+  // Panel remove
+  document.getElementById('panel-list').addEventListener('click', e => {
+    const btn = e.target.closest('.panel-remove');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (state[id]) state[id].week = false;
+    saveState();
+    renderGrid();
+    renderPanel();
+    updateBadge();
+  });
+
+  // Export
+  document.getElementById('do-export').addEventListener('click', exportJSON);
+}
+
+init();
+</script>
+</body>
+</html>
